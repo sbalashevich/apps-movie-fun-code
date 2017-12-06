@@ -16,45 +16,100 @@
  */
 package org.superbiz.moviefun.movies;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.*;
 import javax.persistence.metamodel.EntityType;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Repository
 public class MoviesBean {
 
-    @PersistenceContext
+    @Autowired
+    @Qualifier("moviesEntityManager")
     private EntityManager entityManager;
+
+    @Autowired
+    @Qualifier("moviesTransactionManager")
+    private PlatformTransactionManager moviesTransactionManager;
+
 
     public Movie find(Long id) {
         return entityManager.find(Movie.class, id);
     }
 
-    @Transactional
+    public void addAllMovie(List<Movie> movies) {
+        TransactionDefinition defM = new DefaultTransactionDefinition();
+        TransactionStatus status = moviesTransactionManager.getTransaction(defM);
+        try {
+            for (Movie movie : movies) {
+                entityManager.persist(movie);
+            }
+            moviesTransactionManager.commit(status);
+        }catch (DataAccessException e) {
+            System.out.println("Error in creating record, rolling back");
+            moviesTransactionManager.rollback(status);
+            throw e;
+        }
+    }
+
     public void addMovie(Movie movie) {
-        entityManager.persist(movie);
+        addAllMovie(Arrays.asList(movie));
     }
 
-    @Transactional
     public void editMovie(Movie movie) {
-        entityManager.merge(movie);
+
+        TransactionDefinition defM = new DefaultTransactionDefinition();
+        TransactionStatus status = moviesTransactionManager.getTransaction(defM);
+        try {
+            entityManager.merge(movie);
+            moviesTransactionManager.commit(status);
+        }catch (DataAccessException e) {
+            System.out.println("Error in creating record, rolling back");
+            moviesTransactionManager.rollback(status);
+            throw e;
+        }
     }
 
-    @Transactional
     public void deleteMovie(Movie movie) {
-        entityManager.remove(movie);
+        TransactionDefinition defM = new DefaultTransactionDefinition();
+        TransactionStatus status = moviesTransactionManager.getTransaction(defM);
+        try {
+            entityManager.remove(movie);
+            moviesTransactionManager.commit(status);
+        }catch (DataAccessException e) {
+            System.out.println("Error in creating record, rolling back");
+            moviesTransactionManager.rollback(status);
+            throw e;
+        }
+
     }
 
-    @Transactional
     public void deleteMovieId(long id) {
-        Movie movie = entityManager.find(Movie.class, id);
-        deleteMovie(movie);
+        TransactionDefinition defM = new DefaultTransactionDefinition();
+        TransactionStatus status = moviesTransactionManager.getTransaction(defM);
+        try {
+            Movie movie = entityManager.find(Movie.class, id);
+            deleteMovie(movie);
+            moviesTransactionManager.commit(status);
+        }catch (DataAccessException e) {
+            System.out.println("Error in creating record, rolling back");
+            moviesTransactionManager.rollback(status);
+            throw e;
+        }
     }
 
     public List<Movie> getMovies() {

@@ -16,23 +16,58 @@
  */
 package org.superbiz.moviefun.albums;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.dao.DataAccessException;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.Database;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
+import org.superbiz.moviefun.movies.Movie;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.sql.DataSource;
+import java.util.Arrays;
 import java.util.List;
 
 @Repository
 public class AlbumsBean {
 
-    @PersistenceContext
+    @Autowired
+    @Qualifier("albumEntityManager")
     private EntityManager entityManager;
 
-    @Transactional
+    @Autowired
+    @Qualifier("albumTransactionManager")
+    private PlatformTransactionManager albumTransactionManager;
+
+
+    public void addAllAlbums(List<Album> albums) {
+        TransactionDefinition defM = new DefaultTransactionDefinition();
+        TransactionStatus status = albumTransactionManager.getTransaction(defM);
+        try {
+            for (Album album : albums) {
+                entityManager.persist(album);
+            }
+            albumTransactionManager.commit(status);
+        }catch (DataAccessException e) {
+            System.out.println("Error in creating record, rolling back");
+            albumTransactionManager.rollback(status);
+            throw e;
+        }
+    }
+
     public void addAlbum(Album album) {
-        entityManager.persist(album);
+        addAllAlbums(Arrays.asList(album));
     }
 
     public List<Album> getAlbums() {
