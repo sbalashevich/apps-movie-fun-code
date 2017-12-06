@@ -40,29 +40,16 @@ import java.util.Arrays;
 import java.util.List;
 
 @Repository
+@Transactional(value = "albumTransactionManager")
 public class AlbumsBean {
 
     @Autowired
     @Qualifier("albumEntityManager")
     private EntityManager entityManager;
 
-    @Autowired
-    @Qualifier("albumTransactionManager")
-    private PlatformTransactionManager albumTransactionManager;
-
-
     public void addAllAlbums(List<Album> albums) {
-        TransactionDefinition defM = new DefaultTransactionDefinition();
-        TransactionStatus status = albumTransactionManager.getTransaction(defM);
-        try {
-            for (Album album : albums) {
-                entityManager.persist(album);
-            }
-            albumTransactionManager.commit(status);
-        }catch (DataAccessException e) {
-            System.out.println("Error in creating record, rolling back");
-            albumTransactionManager.rollback(status);
-            throw e;
+        for (Album album : albums) {
+            entityManager.persist(album);
         }
     }
 
